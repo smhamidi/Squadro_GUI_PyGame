@@ -1,6 +1,7 @@
 import pygame
 import math
 from utils.components import place_player_pawns
+from utils.components import draw_player_info_box_text
 import json
 import threading
 import http.server
@@ -43,6 +44,7 @@ INFOBOX_HEIGHT = math.floor(INFOSECTION_HEIGHT * 0.3)
 INFOBOX_RADIUS = 20
 INFOBOX_THICKNESS = 4
 INFOBOX_COLOR = (0, 0, 0)
+
 
 # --- Player 1 info box
 PLAYER1_BOX_TOPLEFT = (
@@ -379,6 +381,14 @@ while running:
     # Placing the pawns
     place_player_pawns(1, PLAYER1_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
     place_player_pawns(2, PLAYER2_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
+
+    draw_player_info_box_text(
+        DISPLAY, 1, player1_ip, player1_port, player1_reply_port, PLAYER1_BOX
+    )
+
+    draw_player_info_box_text(
+        DISPLAY, 2, player2_ip, player2_port, player2_reply_port, PLAYER2_BOX
+    )
 
     # Updating the display
     pygame.display.update()
