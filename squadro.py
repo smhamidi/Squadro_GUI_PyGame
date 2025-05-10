@@ -7,9 +7,14 @@ import threading
 import http.server
 import socketserver
 import requests
+import os
 
 
 pygame.init()
+
+# GUI States
+FONT_PATH = os.path.join("fonts", "RobotoMono.ttf")
+
 
 # Finding the host display information
 display_info = pygame.display.Info()
@@ -383,11 +388,23 @@ while running:
     place_player_pawns(2, PLAYER2_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
 
     draw_player_info_box_text(
-        DISPLAY, 1, player1_ip, player1_port, player1_reply_port, PLAYER1_BOX
+        DISPLAY,
+        1,
+        player1_ip,
+        player1_port,
+        player1_reply_port,
+        PLAYER1_BOX,
+        FONT_PATH,
     )
 
     draw_player_info_box_text(
-        DISPLAY, 2, player2_ip, player2_port, player2_reply_port, PLAYER2_BOX
+        DISPLAY,
+        2,
+        player2_ip,
+        player2_port,
+        player2_reply_port,
+        PLAYER2_BOX,
+        FONT_PATH,
     )
 
     # Updating the display

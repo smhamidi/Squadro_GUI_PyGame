@@ -53,15 +53,10 @@ def place_player_pawns(player_number, pawns_position, surface, game_width, game_
 
 
 def draw_player_info_box_text(
-    surface,
-    player_num,
-    ip,
-    port,
-    reply_port,
-    box_rect,
+    surface, player_num, ip, port, reply_port, box_rect, font_path
 ):
-    TITLE_FONT = pygame.font.SysFont("Roboto Mono", 30)
-    INFO_FONT = pygame.font.SysFont("Roboto Mono", 22)
+    TITLE_FONT = pygame.font.Font(font_path, 30)
+    INFO_FONT = pygame.font.Font(font_path, 22)
     TEXT_COLOR = (0, 0, 0)
     # Constants for padding and spacing inside the box
     PADDING_TOP = 10  # Padding from the top of the box to the title
