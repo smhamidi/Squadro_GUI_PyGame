@@ -15,6 +15,8 @@ def place_player_pawns(player_number, pawns_position, surface, game_width, game_
         )
         OFFSET = math.floor((PAWN_WIDTH + PAWN_HEIGHT) * 1.0205)
         for pawn in pawns_position:
+            if pawn["position"] == 0 and pawn["return"] == True:
+                continue
             image = pygame.image.load(IMAGE_PATH)
             image = pygame.transform.scale(image, (PAWN_WIDTH, PAWN_HEIGHT))
             image_rect = image.get_rect()
@@ -36,6 +38,8 @@ def place_player_pawns(player_number, pawns_position, surface, game_width, game_
         )
         OFFSET = math.floor((PAWN_WIDTH + PAWN_HEIGHT) * 1.0205)
         for pawn in pawns_position:
+            if pawn["position"] == 0 and pawn["return"] == True:
+                continue
             image = pygame.image.load(IMAGE_PATH)
             image = pygame.transform.scale(image, (PAWN_WIDTH, PAWN_HEIGHT))
             image_rect = image.get_rect()

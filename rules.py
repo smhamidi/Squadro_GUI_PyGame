@@ -1,67 +1,4 @@
-import pygame
-import math
-from utils.components import place_player_pawns
-import socket
-import json
-import threading
-import http.server
-import socketserver
-from urllib.parse import urlparse, parse_qs
-
-
-pygame.init()
-
-# Finding the host display information
-display_info = pygame.display.Info()
-MAX_WIDTH = display_info.current_w
-MAX_HEIGHT = display_info.current_h
-
-
-# Setting the game display
-pygame.display.set_caption("Squadro by smhamidi")
-GAME_WIDTH = math.floor(MAX_WIDTH * 0.80)
-GAME_HEIGHT = math.floor(GAME_WIDTH / 2)
-DISPLAY = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT))
-# --- Display Style
-DISPLAY.fill((245, 245, 245))
-print(GAME_WIDTH, GAME_HEIGHT)
-
-
-# Game Board
-MAIN_BOARD = pygame.image.load("./Assets/MainBoard.png")
-MAIN_BOARD = pygame.transform.scale(MAIN_BOARD, (GAME_HEIGHT, GAME_HEIGHT))  # resizing
-# --- Positioning the Board
-MAIN_BOARD_RECT = MAIN_BOARD.get_rect()
-MAIN_BOARD_RECT.topleft = (GAME_HEIGHT // 2, 0)
-
-
-# Info box
-# --- Constants
-INFOSECTION_WIDTH = GAME_WIDTH // 4
-INFOSECTION_HEIGHT = GAME_HEIGHT
-INFOBOX_WIDTH = math.floor(INFOSECTION_WIDTH * 0.90)
-INFOBOX_HEIGHT = math.floor(INFOSECTION_HEIGHT * 0.3)
-INFOBOX_RADIUS = 20
-INFOBOX_THICKNESS = 4
-INFOBOX_COLOR = (0, 0, 0)
-
-# --- Player 1 info box
-PLAYER1_BOX_TOPLEFT = (
-    math.floor(INFOSECTION_WIDTH * 0.05),
-    math.floor(INFOSECTION_WIDTH * 0.05),
-)
-PLAYER1_BOX = pygame.Rect(PLAYER1_BOX_TOPLEFT, (INFOBOX_WIDTH, INFOBOX_HEIGHT))
-
-
-# --- Player 2 info box
-PLAYER2_BOX_TOPLEFT = (
-    math.floor(INFOSECTION_WIDTH * 0.05) + math.floor(GAME_WIDTH * 0.75),
-    math.floor(INFOSECTION_WIDTH * 0.05),
-)
-PLAYER2_BOX = pygame.Rect(PLAYER2_BOX_TOPLEFT, (INFOBOX_WIDTH, INFOBOX_HEIGHT))
-
-
-# Game states
+# Game states (assuming these are globally accessible as in your example)
 
 # --- 1st Player states
 PLAYER1_PAWNS = [
@@ -71,31 +8,45 @@ PLAYER1_PAWNS = [
     {"number": 4, "position": 0, "return": False, "f_number": 3, "r_number": 1},
     {"number": 5, "position": 0, "return": False, "f_number": 1, "r_number": 3},
 ]
-PLAYER1_COLOR = (184, 146, 48)
-player1_ip = "127.0.0.1"
-player1_port = 8081
 
 # --- 2nd Player states
 PLAYER2_PAWNS = [
-    {"number": 1, "position": 0, "return": False, "f_number": 3, "r_number": 1},
-    {"number": 2, "position": 0, "return": False, "f_number": 1, "r_number": 3},
-    {"number": 3, "position": 0, "return": False, "f_number": 2, "r_number": 2},
-    {"number": 4, "position": 0, "return": False, "f_number": 1, "r_number": 3},
-    {"number": 5, "position": 0, "return": False, "f_number": 3, "r_number": 1},
+    {
+        "number": 1,
+        "position": 0,
+        "return": False,
+        "f_number": 3,
+        "r_number": 1,
+    },  # Corresponds to column 1 for P2
+    {
+        "number": 2,
+        "position": 0,
+        "return": False,
+        "f_number": 1,
+        "r_number": 3,
+    },  # Corresponds to column 2 for P2
+    {
+        "number": 3,
+        "position": 0,
+        "return": False,
+        "f_number": 2,
+        "r_number": 2,
+    },  # Corresponds to column 3 for P2
+    {
+        "number": 4,
+        "position": 0,
+        "return": False,
+        "f_number": 1,
+        "r_number": 3,
+    },  # Corresponds to column 4 for P2
+    {
+        "number": 5,
+        "position": 0,
+        "return": False,
+        "f_number": 3,
+        "r_number": 1,
+    },  # Corresponds to column 5 for P2
 ]
-PLAYER2_COLOR = (176, 36, 24)
-player2_ip = "127.0.0.1"
-player2_port = 8082
-
-# --- Game states
-running = True
-blit_objs = {"MAIN_BOARD": (MAIN_BOARD, MAIN_BOARD_RECT)}
-current_player = 1
-
-
-# Game Clock
-FPS = 60
-CLOCK = pygame.time.Clock()
 
 
 # Game Functions
@@ -272,123 +223,3 @@ def process_move(move, player_id):
             # 'return' status remains True. Pawn is back at the far end.
 
     return True
-
-
-class PlayerHandler(http.server.BaseHTTPRequestHandler):
-    player_number = None
-    next_player = None
-
-    def do_POST(self):
-        global current_player
-
-        content_length = int(self.headers["Content-Length"])
-        post_data = self.rfile.read(content_length)
-
-        try:
-            move_data = json.loads(post_data.decode("utf-8"))
-
-            # Only process if it's this player's turn
-            if current_player == self.player_number:
-                status = process_move(move_data, current_player)
-                response = {"status": status}
-
-                if status is True:
-                    # Switch to the next player's turn
-                    current_player = self.next_player
-                else:
-                    raise Exception(f"Invalid Move: {move_data}")
-
-                self.send_response(200)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-            else:
-                self.send_response(400)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "Not your turn"}).encode("utf-8"))
-        except Exception as e:
-            self.send_response(400)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
-
-    def log_message(self, format, *args):
-        # Suppress log messages to keep console clean
-        return
-
-
-class Player1Handler(PlayerHandler):
-    player_number = 1
-    next_player = 2
-
-
-class Player2Handler(PlayerHandler):
-    player_number = 2
-    next_player = 1
-
-
-# Start the HTTP servers
-def start_servers():
-    # Create server for Player 1
-    player1_server = socketserver.TCPServer((player1_ip, player1_port), Player1Handler)
-    player1_thread = threading.Thread(target=player1_server.serve_forever)
-    player1_thread.daemon = True
-    player1_thread.start()
-    print(f"Player 1 server started at {player1_ip}:{player1_port}")
-
-    # Create server for Player 2
-    player2_server = socketserver.TCPServer((player2_ip, player2_port), Player2Handler)
-    player2_thread = threading.Thread(target=player2_server.serve_forever)
-    player2_thread.daemon = True
-    player2_thread.start()
-    print(f"Player 2 server started at {player2_ip}:{player2_port}")
-
-
-# Start the servers before the game loop
-start_servers()
-
-
-# Main Game Loop
-while running:
-    # Clicking exit button
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Blitting Objects
-    for key, value in blit_objs.items():
-        DISPLAY.blit(value[0], value[1])
-
-    # Players info box rects - highlight current player
-    player1_box_color = PLAYER1_COLOR if current_player == 1 else (0, 0, 0)
-    player2_box_color = PLAYER2_COLOR if current_player == 2 else (0, 0, 0)
-
-    # Players info box rects
-    pygame.draw.rect(
-        DISPLAY,
-        player1_box_color,
-        PLAYER1_BOX,
-        border_radius=INFOBOX_RADIUS,
-        width=INFOBOX_THICKNESS,
-    )
-    pygame.draw.rect(
-        DISPLAY,
-        player2_box_color,
-        PLAYER2_BOX,
-        border_radius=INFOBOX_RADIUS,
-        width=INFOBOX_THICKNESS,
-    )
-
-    # Placing the pawns
-    place_player_pawns(1, PLAYER1_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
-    place_player_pawns(2, PLAYER2_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
-
-    # Updating the display
-    pygame.display.update()
-
-    # Using Clock for ensuring 60fps
-    CLOCK.tick(FPS)
-
-# Quit pygame
-pygame.quit()
