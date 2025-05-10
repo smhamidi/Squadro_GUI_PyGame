@@ -1,12 +1,11 @@
 import pygame
 import math
 from utils.components import place_player_pawns
-import socket
 import json
 import threading
 import http.server
 import socketserver
-from urllib.parse import urlparse, parse_qs
+import requests
 
 
 pygame.init()
@@ -74,6 +73,7 @@ PLAYER1_PAWNS = [
 PLAYER1_COLOR = (184, 146, 48)
 player1_ip = "127.0.0.1"
 player1_port = 8081
+player1_reply_port = 9081
 
 # --- 2nd Player states
 PLAYER2_PAWNS = [
@@ -86,6 +86,7 @@ PLAYER2_PAWNS = [
 PLAYER2_COLOR = (176, 36, 24)
 player2_ip = "127.0.0.1"
 player2_port = 8082
+player2_reply_port = 9082
 
 # --- Game states
 running = True
@@ -119,25 +120,14 @@ def process_move(move, player_id):
     else:
         return False  # Invalid player_id
 
-    # Get the specific pawn object. Assumes pawns are ordered by 'number' in the list.
-    # (pawn_number_to_move is 1-5, list index is 0-4)
     moving_pawn_dict = current_player_pawns_list[pawn_number_to_move - 1]
 
-    # Sanity check if the pawn's number field matches (optional but good practice)
-    if moving_pawn_dict["number"] != pawn_number_to_move:
-        # This indicates an issue with pawn list structure or assumptions.
-        # For now, we trust the indexing.
-        print(f"Warning: Mismatch for player {player_id}, pawn {pawn_number_to_move}.")
-
     # Check if pawn has already finished its race
-    # A pawn is finished if it's at position 0 AND on its return trip.
     if moving_pawn_dict["position"] == 0 and moving_pawn_dict["return"] == True:
         return False  # Cannot move a finished pawn
 
     start_pos = moving_pawn_dict["position"]
     is_returning = moving_pawn_dict["return"]
-    # current_pawn_track is the 'lane' number (row for P1, column for P2)
-    # This is used to identify if an opponent pawn is on the same geometric line.
     current_pawn_track_id = moving_pawn_dict["number"]
 
     if not is_returning:  # Forward move
@@ -147,12 +137,11 @@ def process_move(move, player_id):
         strength = moving_pawn_dict["r_number"]
         direction = -1
 
-    # --- Collision and Movement Logic ---
+    # Collision and Movement Logic
 
     # Calculate the pawn's intended destination if no jumps occur
     intended_pos_no_jumps = start_pos + direction * strength
 
-    # This variable will hold the pawn's position after the initial part of the move (either normal advance or first jump)
     pos_after_initial_path_resolution = intended_pos_no_jumps
 
     # Find the *first* opponent encountered on the initial path segment (defined by 'strength')
@@ -164,14 +153,6 @@ def process_move(move, player_id):
         if opp_pawn["position"] == 0 and opp_pawn["return"] == True:
             continue
 
-        # An opponent pawn is on the moving pawn's line of movement if:
-        #   - P1 moving (along a row): Opponent P2's current row (`opp_pawn["position"]`) matches P1's row (`current_pawn_track_id`).
-        #   - P2 moving (along a col): Opponent P1's current col (`opp_pawn["position"]`) matches P2's col (`current_pawn_track_id`).
-        # This translates to: `opp_pawn["position"] == current_pawn_track_id`
-
-        # The opponent's coordinate *along the moving pawn's axis of movement* is `opp_pawn["number"]`.
-        #   - P1 moving (cols 0-6): P2's relevant coordinate is its column number (`opp_pawn["number"]`).
-        #   - P2 moving (rows 0-6): P1's relevant coordinate is its row number (`opp_pawn["number"]`).
         if opp_pawn["position"] == current_pawn_track_id:
             opp_coord_on_moving_pawns_axis = opp_pawn["number"]
 
@@ -206,10 +187,7 @@ def process_move(move, player_id):
             jumped_opp["position"] = 6
     # else: No jump on the initial path, pos_after_initial_path_resolution remains intended_pos_no_jumps
 
-    # --- Chain Reaction Jumps ---
-    # The pawn has landed at `pos_after_initial_path_resolution`.
-    # Check if this landing spot is occupied by another opponent.
-    # `final_effective_pos` starts as the landing spot from the first phase.
+    # --- Chain Reaction Jumps
     final_effective_pos = pos_after_initial_path_resolution
 
     while True:
@@ -245,7 +223,7 @@ def process_move(move, player_id):
             break
 
     moving_pawn_dict["position"] = final_effective_pos
-    # --- End Collision and Movement Logic ---
+    # --- End Collision and Movement Logic
 
     # Boundary checks and updating 'return' status
     # (This part is similar to your original code, adapted for the new position)
@@ -293,6 +271,24 @@ class PlayerHandler(http.server.BaseHTTPRequestHandler):
                 response = {"status": status}
 
                 if status is True:
+                    # Sending the move to the other player
+                    if current_player == 1:
+                        ip, port = player2_ip, player2_reply_port
+                    else:
+                        ip, port = player1_ip, player1_reply_port
+
+                    url = f"http://{ip}:{port}"
+                    try:
+                        requests.post(
+                            url,
+                            json={"player": current_player, "move": move_data["move"]},
+                            timeout=1,
+                        )
+                    except requests.exceptions.RequestException as exc:
+                        print(
+                            f"[ERROR] Could not notify player {self.next_player}: {exc}"
+                        )
+
                     # Switch to the next player's turn
                     current_player = self.next_player
                 else:
@@ -331,18 +327,18 @@ class Player2Handler(PlayerHandler):
 # Start the HTTP servers
 def start_servers():
     # Create server for Player 1
-    player1_server = socketserver.TCPServer((player1_ip, player1_port), Player1Handler)
+    player1_server = socketserver.TCPServer(("127.0.0.1", player1_port), Player1Handler)
     player1_thread = threading.Thread(target=player1_server.serve_forever)
     player1_thread.daemon = True
     player1_thread.start()
-    print(f"Player 1 server started at {player1_ip}:{player1_port}")
+    print(f"Player 1 server started at {"127.0.0.1"}:{player1_port}")
 
     # Create server for Player 2
-    player2_server = socketserver.TCPServer((player2_ip, player2_port), Player2Handler)
+    player2_server = socketserver.TCPServer(("127.0.0.1", player2_port), Player2Handler)
     player2_thread = threading.Thread(target=player2_server.serve_forever)
     player2_thread.daemon = True
     player2_thread.start()
-    print(f"Player 2 server started at {player2_ip}:{player2_port}")
+    print(f"Player 2 server started at {"127.0.0.1"}:{player2_port}")
 
 
 # Start the servers before the game loop
