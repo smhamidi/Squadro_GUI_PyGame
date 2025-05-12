@@ -1,5 +1,6 @@
 import pygame
 import math
+from utils.components import create_main_board
 from utils.components import place_player_pawns
 from utils.components import draw_player_info_box_text
 import json
@@ -30,14 +31,6 @@ DISPLAY = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT))
 # --- Display Style
 DISPLAY.fill((245, 245, 245))
 print(GAME_WIDTH, GAME_HEIGHT)
-
-
-# Game Board
-MAIN_BOARD = pygame.image.load("./Assets/MainBoard.png")
-MAIN_BOARD = pygame.transform.scale(MAIN_BOARD, (GAME_HEIGHT, GAME_HEIGHT))  # resizing
-# --- Positioning the Board
-MAIN_BOARD_RECT = MAIN_BOARD.get_rect()
-MAIN_BOARD_RECT.topleft = (GAME_HEIGHT // 2, 0)
 
 
 # Info box
@@ -90,14 +83,13 @@ PLAYER2_PAWNS = [
     {"number": 4, "position": 0, "return": False, "f_number": 1, "r_number": 3},
     {"number": 5, "position": 0, "return": False, "f_number": 3, "r_number": 1},
 ]
-PLAYER2_COLOR = (176, 36, 24)
+PLAYER2_COLOR = (155, 28, 49)
 player2_ip = "127.0.0.1"
 player2_port = 8082
 player2_reply_port = 9082
 
 # --- Game states
 running = True
-blit_objs = {"MAIN_BOARD": (MAIN_BOARD, MAIN_BOARD_RECT)}
 current_player = 1
 
 
@@ -359,9 +351,16 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    # Blitting Objects
-    for key, value in blit_objs.items():
-        DISPLAY.blit(value[0], value[1])
+    # Game Board
+    MAIN_BOARD = pygame.Surface((GAME_HEIGHT, GAME_HEIGHT))
+    MAIN_BOARD.fill((34, 34, 34))
+    MAIN_BOARD = create_main_board(
+        MAIN_BOARD, GAME_HEIGHT, GAME_HEIGHT, PLAYER1_PAWNS, PLAYER2_PAWNS
+    )
+    # --- Positioning the Board
+    MAIN_BOARD_RECT = MAIN_BOARD.get_rect()
+    MAIN_BOARD_RECT.topleft = (GAME_HEIGHT // 2, 0)
+    DISPLAY.blit(MAIN_BOARD, MAIN_BOARD_RECT)
 
     # Players info box rects - highlight current player
     player1_box_color = PLAYER1_COLOR if current_player == 1 else (0, 0, 0)
@@ -382,10 +381,6 @@ while running:
         border_radius=INFOBOX_RADIUS,
         width=INFOBOX_THICKNESS,
     )
-
-    # Placing the pawns
-    place_player_pawns(1, PLAYER1_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
-    place_player_pawns(2, PLAYER2_PAWNS, DISPLAY, GAME_WIDTH, GAME_HEIGHT)
 
     draw_player_info_box_text(
         DISPLAY,
