@@ -136,7 +136,7 @@ def place_player_pawns(
             surface.blit(image, image_rect)
     elif player_number == 2:
         DIR_PATH = os.path.dirname(__file__)
-        IMAGE_PATH = os.path.join(DIR_PATH, "..", "Assets", "Player2.png")
+        IMAGE_PATH = os.path.join(DIR_PATH, "..", "assets", "Player2.png")
         OFFSET = BIG_OFFSET + SMALL_OFFSET
         START_POSITION = (
             math.floor(1.5 * OFFSET),
